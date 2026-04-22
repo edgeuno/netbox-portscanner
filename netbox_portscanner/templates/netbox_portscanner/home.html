@@ -1,0 +1,91 @@
+{% extends 'base/layout.html' %}
+
+{% block content %}
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <strong>Port Scanner Configuration</strong>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-0">
+                        This page shows the active scanner configuration summary. Secrets are intentionally redacted.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <strong>Scanner Inputs</strong>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover attr-table mb-0">
+                        <tr>
+                            <th scope="row"><strong>Config File</strong></th>
+                            <td>{{ proxmox_settings.filePath|default:default_proxmox_settings.filePath }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Proxmox Endpoint</strong></th>
+                            <td>{{ proxmox_settings.domain|default:default_proxmox_settings.domain }}:{{ proxmox_settings.http_port|default:default_proxmox_settings.http_port }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Proxmox User</strong></th>
+                            <td>{{ proxmox_settings.user|default:default_proxmox_settings.user }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Credentials</strong></th>
+                            <td>{{ has_proxmox_credentials|yesno:"Configured,Not configured" }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>SSL</strong></th>
+                            <td>{{ proxmox_settings.ssl|default:default_proxmox_settings.ssl }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Tenant Filter</strong></th>
+                            <td>{{ netbox_settings.tenant_regex_validator|default:default_netbox_settings.tenant_regex_validator }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <strong>Runtime</strong>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover attr-table mb-0">
+                        <tr>
+                            <th scope="row"><strong>Management Command</strong></th>
+                            <td><code>manage.py portscanner &lt;tenant&gt;</code></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Runner Script</strong></th>
+                            <td><code>portscanner_runner.sh</code></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Supported Backend</strong></th>
+                            <td><code>VMPortScannerQueue</code></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>NetBox Token</strong></th>
+                            <td>{{ has_netbox_token|yesno:"Configured,Not configured" }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Default Tenant</strong></th>
+                            <td>{{ netbox_settings.tenant_name|default:default_netbox_settings.tenant_name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><strong>Manufacturer</strong></th>
+                            <td>{{ netbox_settings.manufacturer|default:default_netbox_settings.manufacturer }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

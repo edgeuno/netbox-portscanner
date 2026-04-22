@@ -1,0 +1,9 @@
+include *.lock
+include *.md
+include *.py
+include *.txt
+recursive-include etc *.png
+recursive-include netbox_portscanner *.py
+recursive-include netbox_portscanner *.html
+recursive-include netbox_portscanner *.json
+recursive-include netbox_portscanner *.svg

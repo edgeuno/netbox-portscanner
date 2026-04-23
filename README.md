@@ -31,25 +31,11 @@ Enable the plugin in NetBox:
 
 ```python
 PLUGINS = ["netbox_portscanner"]
-
-PLUGINS_CONFIG = {
-    "netbox_portscanner": {
-        "proxmox": {
-            "filePath": "/opt/netbox/plugins/netbox-portscanner/configuration_options.json",
-        },
-    }
-}
 ```
 
 ## Configuration
 
-Use the sanitized example files in the repository as templates only:
-
-- `configuration_options_default.json`: single-cluster example
-- `configuration_options1.json`: multi-cluster example
-- `configuration_options.json`: editable local sample
-
-Do not commit live passwords, API tokens, or environment-specific hostnames.
+No plugin-specific configuration file is required by the current scanner runtime.
 
 ## Run
 

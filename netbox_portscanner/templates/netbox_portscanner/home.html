@@ -1,89 +1,265 @@
 {% extends 'base/layout.html' %}
 
 {% block content %}
-    <div class="row mb-3">
-        <div class="col">
-            <div class="card">
-                <div class="card-header">
-                    <strong>Port Scanner Configuration</strong>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-0">
-                        This page shows the active scanner configuration summary. Secrets are intentionally redacted.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <style>
+        .scanner-shell {
+            --scanner-ink: #0f172a;
+            --scanner-muted: #526072;
+            --scanner-line: rgba(15, 23, 42, 0.08);
+            --scanner-surface: linear-gradient(145deg, #fffdf8 0%, #f4f7fb 100%);
+            --scanner-accent: #0f766e;
+            --scanner-accent-soft: rgba(15, 118, 110, 0.14);
+            --scanner-gold: #d97706;
+            --scanner-danger: #b91c1c;
+        }
 
-    <div class="row mb-3">
-        <div class="col col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <strong>Scanner Inputs</strong>
-                </div>
-                <div class="card-body">
-                    <table class="table table-hover attr-table mb-0">
-                        <tr>
-                            <th scope="row"><strong>Config File</strong></th>
-                            <td>{{ proxmox_settings.filePath|default:default_proxmox_settings.filePath }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Proxmox Endpoint</strong></th>
-                            <td>{{ proxmox_settings.domain|default:default_proxmox_settings.domain }}:{{ proxmox_settings.http_port|default:default_proxmox_settings.http_port }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Proxmox User</strong></th>
-                            <td>{{ proxmox_settings.user|default:default_proxmox_settings.user }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Credentials</strong></th>
-                            <td>{{ has_proxmox_credentials|yesno:"Configured,Not configured" }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>SSL</strong></th>
-                            <td>{{ proxmox_settings.ssl|default:default_proxmox_settings.ssl }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Tenant Filter</strong></th>
-                            <td>{{ netbox_settings.tenant_regex_validator|default:default_netbox_settings.tenant_regex_validator }}</td>
-                        </tr>
-                    </table>
+        .scanner-hero {
+            background:
+                radial-gradient(circle at top right, rgba(217, 119, 6, 0.18), transparent 34%),
+                radial-gradient(circle at left center, rgba(15, 118, 110, 0.12), transparent 30%),
+                var(--scanner-surface);
+            border: 1px solid var(--scanner-line);
+            border-radius: 24px;
+            box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .scanner-hero::after {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+            content: "";
+            inset: 0 auto 0 -30%;
+            position: absolute;
+            transform: skewX(-18deg);
+            width: 36%;
+        }
+
+        .scanner-hero-body,
+        .scanner-card {
+            position: relative;
+            z-index: 1;
+        }
+
+        .scanner-title {
+            color: var(--scanner-ink);
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            margin-bottom: 0.5rem;
+        }
+
+        .scanner-copy,
+        .scanner-meta,
+        .scanner-step-copy {
+            color: var(--scanner-muted);
+        }
+
+        .scanner-badge {
+            background: rgba(15, 23, 42, 0.05);
+            border: 1px solid rgba(15, 23, 42, 0.07);
+            border-radius: 999px;
+            color: var(--scanner-ink);
+            display: inline-flex;
+            font-size: 0.78rem;
+            font-weight: 700;
+            gap: 0.35rem;
+            letter-spacing: 0.08em;
+            padding: 0.45rem 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .scanner-grid {
+            display: grid;
+            gap: 1.25rem;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .scanner-card {
+            background: #fff;
+            border: 1px solid var(--scanner-line);
+            border-radius: 20px;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+            height: 100%;
+            padding: 1.25rem;
+        }
+
+        .scanner-card-title {
+            color: var(--scanner-ink);
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .scanner-stat {
+            align-items: center;
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        .scanner-icon {
+            align-items: center;
+            background: var(--scanner-accent-soft);
+            border-radius: 14px;
+            color: var(--scanner-accent);
+            display: inline-flex;
+            font-size: 1.15rem;
+            height: 44px;
+            justify-content: center;
+            width: 44px;
+        }
+
+        .scanner-kicker {
+            color: var(--scanner-muted);
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 0.15rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .scanner-value {
+            color: var(--scanner-ink);
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .scanner-pill {
+            border-radius: 999px;
+            display: inline-flex;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.35rem 0.7rem;
+        }
+
+        .scanner-pill-ok {
+            background: rgba(15, 118, 110, 0.12);
+            color: var(--scanner-accent);
+        }
+
+        .scanner-pill-warn {
+            background: rgba(185, 28, 28, 0.12);
+            color: var(--scanner-danger);
+        }
+
+        .scanner-step {
+            border-top: 1px solid var(--scanner-line);
+            padding-top: 1rem;
+        }
+
+        .scanner-step:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .scanner-step-title {
+            color: var(--scanner-ink);
+            font-size: 0.98rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .scanner-code {
+            background: #0f172a;
+            border-radius: 16px;
+            color: #f8fafc;
+            display: block;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            padding: 1rem 1.1rem;
+        }
+
+        .scanner-note {
+            background: rgba(217, 119, 6, 0.08);
+            border: 1px solid rgba(217, 119, 6, 0.2);
+            border-radius: 16px;
+            color: #8a4b09;
+            padding: 0.95rem 1rem;
+        }
+    </style>
+
+    <div class="scanner-shell">
+        <div class="scanner-hero mb-4">
+            <div class="scanner-hero-body p-4 p-lg-5">
+                <span class="scanner-badge mb-3">Scanner Runtime</span>
+                <div class="row align-items-end gy-4">
+                    <div class="col-lg-8">
+                        <h1 class="scanner-title">Port scanning, stripped down to the supported path.</h1>
+                        <p class="scanner-copy mb-0">
+                            This page is now an operator overview for the supported scanner path. Configuration values, endpoints, and credentials are intentionally kept out of the UI.
+                        </p>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="scanner-card p-3">
+                            <span class="scanner-kicker">Supported Backend</span>
+                            <div class="scanner-value mb-2">VMPortScannerQueue</div>
+                            <div class="scanner-meta">Single supported runtime entrypoint for the cleaned plugin.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <strong>Runtime</strong>
+
+        <div class="scanner-grid mb-4">
+            <div class="scanner-card">
+                <div class="scanner-card-title">Execution Path</div>
+                <div class="scanner-copy mb-3">The supported control flow from cron or shell into the scanner worker.</div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">1. Runner</div>
+                    <div class="scanner-step-copy">Use the repository wrapper when scheduling execution.</div>
                 </div>
-                <div class="card-body">
-                    <table class="table table-hover attr-table mb-0">
-                        <tr>
-                            <th scope="row"><strong>Management Command</strong></th>
-                            <td><code>manage.py portscanner &lt;tenant&gt;</code></td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Runner Script</strong></th>
-                            <td><code>portscanner_runner.sh</code></td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Supported Backend</strong></th>
-                            <td><code>VMPortScannerQueue</code></td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>NetBox Token</strong></th>
-                            <td>{{ has_netbox_token|yesno:"Configured,Not configured" }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Default Tenant</strong></th>
-                            <td>{{ netbox_settings.tenant_name|default:default_netbox_settings.tenant_name }}</td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><strong>Manufacturer</strong></th>
-                            <td>{{ netbox_settings.manufacturer|default:default_netbox_settings.manufacturer }}</td>
-                        </tr>
-                    </table>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">2. Management Command</div>
+                    <div class="scanner-step-copy">The only supported command target is `portscanner`.</div>
+                </div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">3. Backend</div>
+                    <div class="scanner-step-copy">`VMPortScannerQueue` performs the live scan and service sync.</div>
+                </div>
+            </div>
+
+            <div class="scanner-card">
+                <div class="scanner-card-title">Run Command</div>
+                <div class="scanner-copy mb-3">Tenant name stays explicit so scheduled jobs are easy to audit.</div>
+                <code class="scanner-code">/opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py portscanner &lt;tenant&gt;</code>
+                <div class="scanner-note mt-4">
+                    `portscanner_runner.sh` is the preferred repository wrapper for cron execution.
+                </div>
+            </div>
+            <div class="scanner-card">
+                <div class="scanner-card-title">Operator Notes</div>
+                <div class="scanner-copy mb-3">The home page is intentionally neutral and does not expose deployment-specific settings.</div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">No config echo</div>
+                    <div class="scanner-step-copy">Endpoints, users, tokens, passwords, and SSL flags are not rendered here.</div>
+                </div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">No legacy registry UI</div>
+                    <div class="scanner-step-copy">Removed Proxbox pages and model-backed flows are not part of this screen.</div>
+                </div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">Runtime first</div>
+                    <div class="scanner-step-copy">Use this page for orientation, then validate plugin loading and command execution in NetBox.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scanner-grid">
+            <div class="scanner-card">
+                <div class="scanner-card-title">Validation Focus</div>
+                <div class="scanner-copy mb-3">The quickest checks after cleanup are operational, not visual.</div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">Plugin load</div>
+                    <div class="scanner-step-copy">Confirm NetBox starts with the plugin enabled and the page renders.</div>
+                </div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">Command discovery</div>
+                    <div class="scanner-step-copy">Confirm `manage.py portscanner &lt;tenant&gt;` is available in the target environment.</div>
+                </div>
+                <div class="scanner-step">
+                    <div class="scanner-step-title">Compile sanity</div>
+                    <div class="scanner-step-copy">Keep `python -m compileall netbox_portscanner` as the minimum repo-side verification.</div>
                 </div>
             </div>
         </div>

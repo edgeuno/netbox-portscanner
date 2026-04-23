@@ -10,7 +10,7 @@ github = 'https://github.com/jaaruizgu/netbox-portscanner'
 
 setup(
     name="netbox-portscanner",
-    version="0.0.5",
+    version="0.1.0",
     author="Javier Alejandro Ruiz",
     author_email="javier.ruiz@edgeuno.com",
     description="Scan NetBox virtual machines and sync detected services",

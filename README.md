@@ -43,9 +43,16 @@ Run the scanner for one or more tenants:
 
 ```bash
 /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py portscanner EdgeUno
+./portscanner_runner.sh EdgeUno
 ```
 
 `portscanner_runner.sh` is the repository wrapper for the same command and is the preferred cron entrypoint.
+
+Example with multiple tenants:
+
+```bash
+./portscanner_runner.sh EdgeUno TenantA TenantB
+```
 
 ## Validation
 

@@ -9,12 +9,45 @@ The active execution path is:
 
 ```text
 portscanner_runner.sh
-  -> /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py portscanner <tenant>
+  -> /opt/netbox/venv/bin/python <manage.py> portscanner <tenant>
   -> netbox_portscanner.management.commands.portscanner
   -> netbox_portscanner.scanner.vm_port_scanner_queue.VMPortScannerQueue
 ```
 
 Legacy Proxbox synchronization code and plugin models have been removed from the runtime. If you are upgrading an older deployment, handle database retirement and migration work separately.
+
+## Execution Paths
+
+These are the supported ways to execute the plugin today:
+
+1. Local wrapper script
+
+```bash
+./portscanner_runner.sh EdgeUno
+./portscanner_runner.sh EdgeUno TenantA TenantB
+```
+
+2. Direct Django management command inside a prepared NetBox runtime
+
+```bash
+/opt/netbox/venv/bin/python <manage.py> portscanner EdgeUno
+```
+
+3. Scheduler-driven Docker runner
+
+```bash
+docker compose -f docker-compose.yaml up --build
+```
+
+This path keeps the container alive and executes according to `runtime/scanner.env`.
+
+4. One-shot Docker execution
+
+```bash
+docker compose -f docker-compose-single-exec.yml run --rm scanner-single-exec
+```
+
+This path is for manual runs and diagnostics.
 
 ## Install
 
@@ -44,12 +77,22 @@ For Docker-based execution, the container follows the same plugin installation m
 
 The current Docker build no longer depends on the `netboxcommunity/netbox` image. It starts from a Python base image, downloads the tagged NetBox source archive for `NETBOX_VERSION`, installs NetBox requirements into `/opt/netbox/venv`, and then installs this plugin in editable mode.
 
+## Docker Files
+
+- `.env`: build/runtime selection, mainly `NETBOX_VERSION` and `TZ`
+- `runtime/configuration.py`: the real NetBox configuration file used by Django
+- `runtime/scanner.env`: scheduler-only inputs such as mode, tenants, interval, and cron expression
+- [docker-compose.yaml](/Users/javier/projects/netbox-portscanner/docker-compose.yaml): scheduler-driven runner
+- [docker-compose-single-exec.yml](/Users/javier/projects/netbox-portscanner/docker-compose-single-exec.yml): one-off/manual execution path
+
+`NETBOX_VERSION` in `.env` must be an exact `X.Y.Z` value, because the Dockerfile downloads `vX.Y.Z` from the NetBox GitHub release archive.
+
 ## Configuration
 
-The Docker runtime expects a mounted NetBox configuration file at:
+The Docker runtime mounts the NetBox configuration file at:
 
 ```text
-/opt/netbox/netbox/netbox/configuration.py
+/opt/netbox/netbox/netbox/netbox/configuration.py
 ```
 
 Use [runtime/configuration.py.example](/Users/javier/projects/netbox-portscanner/runtime/configuration.py.example) as the starting point for the mounted file. That file must contain the NetBox database settings, Redis settings, `SECRET_KEY`, and:
@@ -58,26 +101,70 @@ Use [runtime/configuration.py.example](/Users/javier/projects/netbox-portscanner
 PLUGINS = ["netbox_portscanner"]
 ```
 
-Scheduler inputs remain separate in `runtime/scanner.env`.
+Scheduler inputs remain separate in `runtime/scanner.env`:
 
-`NETBOX_VERSION` in `.env` must be an exact `X.Y.Z` value, because the Dockerfile downloads `vX.Y.Z` from the NetBox GitHub release archive.
+```bash
+SCANNER_MODE=off|continuous|interval|cron
+SCANNER_TENANTS=EdgeUno
+SCANNER_INTERVAL_SECONDS=900
+SCANNER_CRON_EXPRESSION=*/15 * * * *
+SCANNER_RESTART_DELAY_SECONDS=0
+```
+
+The scheduler reads database and Redis connection settings from `runtime/configuration.py`, not from Compose environment variables.
 
 ## Run
 
 Run the scanner for one or more tenants:
 
 ```bash
-/opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py portscanner EdgeUno
 ./portscanner_runner.sh EdgeUno
 ```
 
-`portscanner_runner.sh` is the repository wrapper for the same command and is the preferred cron entrypoint.
+`portscanner_runner.sh` is the preferred entrypoint because it resolves the correct `manage.py` path for the current NetBox layout.
 
 Example with multiple tenants:
 
 ```bash
 ./portscanner_runner.sh EdgeUno TenantA TenantB
 ```
+
+If you are already inside a prepared NetBox environment, you can also call the management command directly:
+
+```bash
+/opt/netbox/venv/bin/python <manage.py> portscanner EdgeUno
+```
+
+## Docker Scheduled Runner
+
+Use the scheduler-driven stack when you want the container to keep running:
+
+```bash
+docker compose -f docker-compose.yaml up --build
+```
+
+Behavior is controlled by `runtime/scanner.env`:
+
+- `off`: start the scheduler and stay idle
+- `continuous`: rerun immediately after the previous execution finishes, with optional delay
+- `interval`: sleep `SCANNER_INTERVAL_SECONDS` between runs
+- `cron`: use `SCANNER_CRON_EXPRESSION`
+
+## Docker Setup
+
+Typical first-time setup:
+
+```bash
+cp .env.example .env
+cp runtime/configuration.py.example runtime/configuration.py
+cp runtime/scanner.env.example runtime/scanner.env
+```
+
+Then edit:
+
+1. `.env` for `NETBOX_VERSION` and timezone
+2. `runtime/configuration.py` for database, Redis, `SECRET_KEY`, and `PLUGINS`
+3. `runtime/scanner.env` for scheduler mode and tenants
 
 ## Docker Single Execution
 
@@ -89,7 +176,7 @@ docker compose -f docker-compose-single-exec.yml run --rm scanner-single-exec
 
 This service mounts `runtime/configuration.py`, uses the same image build, and is intended for one-off command execution.
 
-When you need multiple commands in this file, use shell form through `/bin/sh -lc '...'` so operators like `&&` work correctly. The current file demonstrates that pattern before running `manage.py portscanner EdgeUno`.
+When you need multiple commands in this file, use shell form through `/bin/sh -lc '...'` so operators like `&&` work correctly. The current file is an example of that pattern and can be edited for diagnostics or a direct `manage.py portscanner` invocation.
 
 ## Validation
 
@@ -99,33 +186,12 @@ Before shipping changes, at minimum run:
 python -m compileall netbox_portscanner
 ```
 
-## Upgrade Notes
-
-This repository no longer ships the legacy Proxbox synchronization stack. The following entrypoints and surfaces were intentionally removed without compatibility shims:
-
-- legacy command aliases such as `proxboxportscanner`
-- legacy Proxbox sync code and model-backed registry pages
-- legacy Proxmox VM CRUD/API routes and full-update UI flows
-- unsupported alternate scanner backends
-
-If any external automation still calls removed commands, URLs, or API routes, update it to use the supported path:
+For Docker file validation, these are the quick checks:
 
 ```bash
-/opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py portscanner <tenant>
+docker compose -f docker-compose.yaml config
+docker compose -f docker-compose-single-exec.yml config
 ```
-
-## Legacy Data Retirement
-
-This cleanup is code-first. The repository does **not** automatically delete legacy NetBox data created by older Proxbox sync behavior.
-
-If you are upgrading an older deployment, review and retire these artifacts manually as needed:
-
-- custom fields such as `proxmox_id`, `proxmox_node`, `proxmox_type`, and `proxmox_keep_interface`
-- tags or auxiliary objects created only for the old sync workflow
-- `local_context_data["proxmox"]` payloads on virtual machines
-- database tables for removed plugin models after you add the retirement migrations
-
-Keep this manual cleanup separate from the scanner runtime rollout so you can verify impact before deleting historical data.
 
 ## Contributing
 

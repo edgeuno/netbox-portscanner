@@ -115,6 +115,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+runtime/scanner.env
+runtime/configuration.py
 
 # Spyder project settings
 .spyderproject

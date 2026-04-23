@@ -1,0 +1,23 @@
+services:
+  scanner-single-exec:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NETBOX_VERSION: ${NETBOX_VERSION}
+    image: netbox-portscanner:${NETBOX_VERSION}
+    environment:
+      TZ: ${TZ}
+    command: >
+      /bin/sh -lc '
+      ls -lash /opt/netbox/plugins/netbox-portscanner/netbox_portscanner &&
+      cd /opt/netbox/netbox/netbox &&
+      /opt/netbox/venv/bin/python manage.py --help &&
+      /opt/netbox/venv/bin/python manage.py portscanner EdgeUno
+      '
+    volumes:
+      - ./runtime/configuration.py:/opt/netbox/netbox/netbox/netbox/configuration.py
+      - netbox-media:/opt/netbox/netbox/media
+
+volumes:
+  netbox-media:

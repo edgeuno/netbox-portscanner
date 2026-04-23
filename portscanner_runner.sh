@@ -9,4 +9,22 @@ if [ "$#" -lt 1 ]; then
     exit 1
 fi
 
-exec /opt/netbox/venv/bin/python /opt/netbox/netbox/manage.py portscanner "$@"
+MANAGE_PY=""
+
+for candidate in \
+    /opt/netbox/netbox/netbox/manage.py \
+    /opt/netbox/netbox/manage.py \
+    /opt/netbox/netbox/netbox/manage.py
+do
+    if [ -f "$candidate" ]; then
+        MANAGE_PY="$candidate"
+        break
+    fi
+done
+
+if [ -z "$MANAGE_PY" ]; then
+    echo "Unable to locate NetBox manage.py" >&2
+    exit 1
+fi
+
+exec /opt/netbox/venv/bin/python "$MANAGE_PY" portscanner "$@"

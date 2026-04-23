@@ -18,7 +18,7 @@ Legacy Proxbox synchronization code and plugin models have been removed from the
 
 ## Install
 
-Clone the repository into your NetBox plugins directory and install it in the NetBox virtual environment:
+Install the plugin in development mode inside the NetBox virtual environment:
 
 ```bash
 cd /opt/netbox/plugins
@@ -27,15 +27,40 @@ cd netbox-portscanner
 /opt/netbox/venv/bin/python setup.py develop
 ```
 
-Enable the plugin in NetBox:
+Then enable the plugin in the NetBox configuration:
 
 ```python
 PLUGINS = ["netbox_portscanner"]
 ```
 
+Development install summary:
+
+1. Clone this repository under `/opt/netbox/plugins/netbox-portscanner`
+2. Run `/opt/netbox/venv/bin/python setup.py develop`
+3. Add `netbox_portscanner` to `PLUGINS`
+4. Restart the NetBox services so the plugin is loaded
+
+For Docker-based execution, the container follows the same plugin installation model internally: the image installs this repository into the NetBox virtual environment with `python setup.py develop`.
+
+The current Docker build no longer depends on the `netboxcommunity/netbox` image. It starts from a Python base image, downloads the tagged NetBox source archive for `NETBOX_VERSION`, installs NetBox requirements into `/opt/netbox/venv`, and then installs this plugin in editable mode.
+
 ## Configuration
 
-No plugin-specific configuration file is required by the current scanner runtime.
+The Docker runtime expects a mounted NetBox configuration file at:
+
+```text
+/opt/netbox/netbox/netbox/configuration.py
+```
+
+Use [runtime/configuration.py.example](/Users/javier/projects/netbox-portscanner/runtime/configuration.py.example) as the starting point for the mounted file. That file must contain the NetBox database settings, Redis settings, `SECRET_KEY`, and:
+
+```python
+PLUGINS = ["netbox_portscanner"]
+```
+
+Scheduler inputs remain separate in `runtime/scanner.env`.
+
+`NETBOX_VERSION` in `.env` must be an exact `X.Y.Z` value, because the Dockerfile downloads `vX.Y.Z` from the NetBox GitHub release archive.
 
 ## Run
 
@@ -53,6 +78,18 @@ Example with multiple tenants:
 ```bash
 ./portscanner_runner.sh EdgeUno TenantA TenantB
 ```
+
+## Docker Single Execution
+
+For a one-shot container execution without the scheduler loop, use [docker-compose-single-exec.yml](/Users/javier/projects/netbox-portscanner/docker-compose-single-exec.yml):
+
+```bash
+docker compose -f docker-compose-single-exec.yml run --rm scanner-single-exec
+```
+
+This service mounts `runtime/configuration.py`, uses the same image build, and is intended for one-off command execution.
+
+When you need multiple commands in this file, use shell form through `/bin/sh -lc '...'` so operators like `&&` work correctly. The current file demonstrates that pattern before running `manage.py portscanner EdgeUno`.
 
 ## Validation
 

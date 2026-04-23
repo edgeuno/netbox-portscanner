@@ -1,0 +1,21 @@
+services:
+  scanner-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NETBOX_VERSION: ${NETBOX_VERSION}
+    image: netbox-portscanner:${NETBOX_VERSION}
+    environment:
+      TZ: ${TZ}
+      SCANNER_CONFIG_FILE: /opt/netbox/runtime/scanner.env
+    command:
+      - /usr/local/bin/scanner-runner.sh
+    restart: unless-stopped
+    volumes:
+      - ./runtime/configuration.py:/opt/netbox/netbox/netbox/netbox/configuration.py
+      - ./runtime/scanner.env:/opt/netbox/runtime/scanner.env
+      - netbox-media:/opt/netbox/netbox/media
+
+volumes:
+  netbox-media:
